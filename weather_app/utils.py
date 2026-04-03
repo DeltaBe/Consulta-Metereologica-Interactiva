@@ -116,3 +116,72 @@ def obtener_grafico_comparativo_base64(ciudades_lista, mes):
         plt.close()
         return uri
     return None
+
+
+
+def obtener_grafico_tendencia_base64(ciudad):
+    df_resumen = dataframe_mes_ciudad()
+    # Filtrar solo por ciudad para tener todo el año
+    df_ciudad = df_resumen[df_resumen['Ciudad'] == ciudad].copy()
+    
+    # Ordenar cronológicamente por la columna Fecha para que la línea no salte
+    df_ciudad = df_ciudad.sort_values('Fecha')
+
+    if not df_ciudad.empty:
+        plt.figure(figsize=(12, 6))
+        
+        # Graficamos la tendencia con Seaborn
+        # lineplot calcula automáticamente la media y la sombra de desviación (ci)
+        sns.lineplot(data=df_ciudad, x='Mes', y='Temperatura Maxima', 
+                     label='Tendencia Máxima', color='#FF5733', marker='o', errorbar='sd')
+        
+        sns.lineplot(data=df_ciudad, x='Mes', y='Temperatura Minima', 
+                     label='Tendencia Mínima', color='#33C1FF', marker='o', errorbar='sd')
+
+        # Estética profesional
+        plt.title(f'Tendencia Anual y Desviación - {ciudad} (2023)', fontsize=16, fontweight='bold', pad=20)
+        plt.ylabel('Temperatura (°C)', fontsize=12)
+        plt.xlabel('Meses del Año', fontsize=12)
+        plt.xticks(rotation=45) # Inclinar meses para mejor lectura
+        plt.legend(frameon=True, shadow=True)
+        
+        sns.despine()
+        plt.tight_layout()
+
+        # Conversión a Base64
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight', dpi=120)
+        buf.seek(0)
+        uri = urllib.parse.quote(base64.b64encode(buf.read()))
+        plt.close()
+        return uri
+    return None
+
+
+def obtener_resumen_estadistico(ciudad_nombre, mes=None):
+    try:
+        df = cargar_dataframe()
+        df_filtrado = df[df['Ciudad'] == ciudad_nombre]
+        
+        # Si el usuario seleccionó un mes, filtramos el DataFrame
+        if mes and mes.strip():
+            df_filtrado = df_filtrado[df_filtrado['Mes'] == mes]
+            titulo = f"Métricas de {mes}"
+            mostrar_ds = False # En mes individual no mostramos desviación
+        else:
+            titulo = "Resumen Anual"
+            mostrar_ds = True
+
+        if df_filtrado.empty:
+            return None
+            
+        return {
+            'max_abs': df_filtrado['Temperatura Maxima'].max(),
+            'min_abs': df_filtrado['Temperatura Minima'].min(),
+            'promedio': round(df_filtrado['Temperatura Maxima'].mean(), 1),
+            'variabilidad': round(df_filtrado['Temperatura Maxima'].std(), 1) if mostrar_ds else None,
+            'titulo': titulo
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
