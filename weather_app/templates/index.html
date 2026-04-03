@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Clima Argentina</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .navbar {
+            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
+            margin-bottom: 2rem;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .btn-primary {
+            background-color: #2a5298;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 25px;
+        }
+        .btn-primary:hover {
+            background-color: #1e3c72;
+        }
+        .form-select, .form-control {
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .chart-container {
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+        }
+        .footer {
+            margin-top: 3rem;
+            color: #777;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark shadow">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                ☁️ ClimaInteractiva <span class="fw-light">| Argentina 2023</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card p-4 mb-4">
+                    <h5 class="mb-3 fw-bold">Consulta de Temperaturas</h5>
+                    <form method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-5">
+                            <label class="form-label text-muted">Selecciona una Ciudad</label>
+                            <select name="ciudad" class="form-select shadow-sm">
+                                {% for c in ciudades %}
+                                    <option value="{{ c }}" {% if request.GET.ciudad == c %}selected{% endif %}>{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted">Mes (Ej: Enero)</label>
+                            <input type="text" name="mes" class="form-control shadow-sm" placeholder="Escribe el mes..." value="{{ request.GET.mes }}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                                📊 Generar Gráfico
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-10 text-center">
+                {% if grafico %}
+                    <div class="card chart-container animate__animated animate__fadeIn">
+                        <h4 class="mb-4 text-secondary">Visualización de Datos</h4>
+                        <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded border shadow-sm mx-auto" style="max-width: 90%;">
+                        <div class="mt-3 text-muted small">
+                            * Datos basados en el registro histórico del año 2023.
+                        </div>
+                    </div>
+                {% elif error %}
+                    <div class="alert alert-warning border-0 shadow-sm">
+                        ⚠️ {{ error }}
+                    </div>
+                {% else %}
+                    <div class="text-muted mt-5">
+                        <i class="bi bi-info-circle"></i> Selecciona una ciudad y un mes para ver las métricas.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-center footer pb-4">
+            <hr class="w-25 mx-auto">
+            Desarrollado con Django & Pandas | 2026
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
