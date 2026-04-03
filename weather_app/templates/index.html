@@ -3,57 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Clima Argentina</title>
+    <title>Dashboard Clima Argentina | Análisis Profesional</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
+            background-color: #f4f7f9;
             color: #333;
         }
         .navbar {
-            background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 1rem 0;
+        }
+        .nav-pills .nav-link {
+            color: #555;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #2a5298;
+            box-shadow: 0 4px 10px rgba(42, 82, 152, 0.3);
         }
         .card {
             border: none;
             border-radius: 15px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
-        }
-        .btn-primary {
-            background-color: #2a5298;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 25px;
-        }
-        .btn-primary:hover {
-            background-color: #1e3c72;
-        }
-        .form-select, .form-control {
-            border-radius: 8px;
-            padding: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         }
         .chart-container {
-            padding: 20px;
             background: white;
-            border-radius: 15px;
+            padding: 2rem;
         }
-        .footer {
-            margin-top: 3rem;
-            color: #777;
-            font-size: 0.9rem;
+        .btn-primary { background-color: #2a5298; border: none; }
+        .btn-success { background-color: #28a745; border: none; }
+        
+        .icon-box {
+            padding: 20px;
+            border-radius: 12px;
+            background: #fff;
+            margin-bottom: 20px;
         }
+        .temp-max { color: #FF5733; font-size: 2.5rem; }
+        .temp-min { color: #33C1FF; font-size: 2.5rem; }
+        
+        .footer { margin-top: 4rem; color: #888; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark shadow">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="#">
-                ☁️ ClimaInteractiva <span class="fw-light">| Argentina 2023</span>
+    <nav class="navbar navbar-dark shadow-sm mb-5">
+        <div class="container text-center">
+            <a class="navbar-brand mx-auto fw-bold" href="/">
+                <i class="bi bi-cloud-sun-fill me-2"></i> METEO-ANALYTICS ARGENTINA
             </a>
         </div>
     </nav>
@@ -61,55 +66,121 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-lg-10">
-                <div class="card p-4 mb-4">
-                    <h5 class="mb-3 fw-bold">Consulta de Temperaturas</h5>
-                    <form method="GET" class="row g-3 align-items-end">
-                        <div class="col-md-5">
-                            <label class="form-label text-muted">Selecciona una Ciudad</label>
-                            <select name="ciudad" class="form-select shadow-sm">
-                                {% for c in ciudades %}
-                                    <option value="{{ c }}" {% if request.GET.ciudad == c %}selected{% endif %}>{{ c }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label text-muted">Mes (Ej: Enero)</label>
-                            <input type="text" name="mes" class="form-control shadow-sm" placeholder="Escribe el mes..." value="{{ request.GET.mes }}">
-                        </div>
-                        <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
-                                📊 Generar Gráfico
-                            </button>
-                        </div>
-                    </form>
+                
+                <div class="bg-white p-2 rounded-pill shadow-sm mb-4 d-flex justify-content-center mx-auto" style="max-width: 600px;">
+                    <ul class="nav nav-pills nav-fill w-100">
+                        <li class="nav-item">
+                            <a class="nav-link {% if tab_activa == 'individual' %}active{% endif %}" href="?tab=individual">
+                                <i class="bi bi-geo-alt-fill"></i> Individual
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if tab_activa == 'comparativa' %}active{% endif %}" href="?tab=comparativa">
+                                <i class="bi bi-arrow-left-right"></i> Comparativa
+                            </a>
+                        </li>
+                    </ul>
                 </div>
-            </div>
 
-            <div class="col-lg-10 text-center">
+                <div class="card p-4 mb-5 animate__animated animate__fadeInUp">
+                    {% if tab_activa == 'individual' %}
+                        <h6 class="text-muted mb-3"><i class="bi bi-search me-1"></i> Análisis por Ciudad</h6>
+                        <form method="GET" class="row g-3 align-items-end">
+                            <input type="hidden" name="tab" value="individual">
+                            <div class="col-md-5">
+                                <label class="form-label small fw-bold">Ciudad</label>
+                                <select name="ciudad" class="form-select border-0 bg-light shadow-sm">
+                                    {% for c in ciudades %}
+                                        <option value="{{ c }}" {% if request.GET.ciudad == c %}selected{% endif %}>{{ c }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Mes (Ej: Mayo)</label>
+                                <input type="text" name="mes" class="form-control border-0 bg-light shadow-sm" placeholder="Escriba el mes..." value="{{ request.GET.mes }}">
+                            </div>
+                            <div class="col-md-3">
+                                <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm fw-bold">
+                                    Ver Métricas
+                                </button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <h6 class="text-muted mb-3"><i class="bi bi-intersect me-1"></i> Comparar dos Regiones</h6>
+                        <form method="GET" class="row g-3 align-items-end">
+                            <input type="hidden" name="tab" value="comparativa">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Primera Ciudad</label>
+                                <select name="ciudad1" class="form-select border-0 bg-light shadow-sm">
+                                    {% for c in ciudades %}<option value="{{ c }}" {% if request.GET.ciudad1 == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Segunda Ciudad</label>
+                                <select name="ciudad2" class="form-select border-0 bg-light shadow-sm">
+                                    {% for c in ciudades %}<option value="{{ c }}" {% if request.GET.ciudad2 == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold">Mes</label>
+                                <input type="text" name="mes_comp" class="form-control border-0 bg-light shadow-sm" placeholder="Mes..." value="{{ request.GET.mes_comp }}">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-success w-100 py-2 shadow-sm fw-bold">
+                                    Comparar
+                                </button>
+                            </div>
+                        </form>
+                    {% endif %}
+                </div>
+
                 {% if grafico %}
-                    <div class="card chart-container animate__animated animate__fadeIn">
-                        <h4 class="mb-4 text-secondary">Visualización de Datos</h4>
-                        <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded border shadow-sm mx-auto" style="max-width: 90%;">
-                        <div class="mt-3 text-muted small">
-                            * Datos basados en el registro histórico del año 2023.
+                    <div class="card chart-container text-center animate__animated animate__zoomIn">
+                        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                            <h4 class="fw-bold text-secondary mb-0">Visualización de Resultados</h4>
+                            <span class="badge bg-light text-dark border p-2">Año: 2023</span>
                         </div>
+
+                        {% if tab_activa == 'individual' %}
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <i class="bi bi-thermometer-sun temp-max"></i>
+                                <p class="mb-0 fw-bold">Temp. Máxima</p>
+                            </div>
+                            <div class="col-6">
+                                <i class="bi bi-thermometer-snow temp-min"></i>
+                                <p class="mb-0 fw-bold">Temp. Mínima</p>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="bg-light p-3 rounded-4 shadow-inner">
+                            <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded" alt="Gráfico Meteorológico">
+                        </div>
+                        
+                        <p class="text-muted mt-4 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Gráfico generado mediante el procesamiento de registros diarios del dataset.
+                        </p>
                     </div>
                 {% elif error %}
-                    <div class="alert alert-warning border-0 shadow-sm">
-                        ⚠️ {{ error }}
+                    <div class="alert alert-warning border-0 shadow-sm animate__animated animate__headShake">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
                     </div>
                 {% else %}
-                    <div class="text-muted mt-5">
-                        <i class="bi bi-info-circle"></i> Selecciona una ciudad y un mes para ver las métricas.
+                    <div class="text-center py-5 text-muted animate__animated animate__fadeIn">
+                        <i class="bi bi-bar-chart-steps" style="font-size: 4rem; opacity: 0.3;"></i>
+                        <h5 class="mt-3">Listo para analizar</h5>
+                        <p>Selecciona una opción en el menú de arriba para comenzar.</p>
                     </div>
                 {% endif %}
+
             </div>
         </div>
 
-        <div class="text-center footer pb-4">
-            <hr class="w-25 mx-auto">
-            Desarrollado con Django & Pandas | 2026
-        </div>
+        <footer class="footer text-center">
+            <p>© 2026 ClimaInteractiva | Ingeniería de Datos con Django & Pandas</p>
+        </footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
