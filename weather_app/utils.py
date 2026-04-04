@@ -1,187 +1,132 @@
+import requests
 import pandas as pd
 import matplotlib.pyplot as plt
-import io
-import urllib, base64
 import seaborn as sns
-# Configuración para que Matplotlib no intente abrir ventanas (Modo No Interactivo)
-import matplotlib
-matplotlib.use('Agg') 
-# Función para cargar el DataFrame de los datos
+import io
+import base64
+from matplotlib.figure import Figure
 
-sns.set_theme(style="whitegrid", palette="muted")
-def cargar_dataframe():
-    # Nota: Asegúrate de que esta ruta sea correcta en tu PC
-    path = r"C:\Users\elver\Documents\cursos\data science federico\archivos csv\Datos+Meteorológicos_Arg_2023.csv"
+# Configuración estética de Seaborn
+sns.set_theme(style="whitegrid")
+
+# --- 1. FUNCIONES DE LLAMADA A API (GEOPOSICIONAMIENTO Y CLIMA) ---
+
+def obtener_coordenadas(ciudad, pais):
+    """Convierte el texto de ciudad y país en Latitud y Longitud."""
     try:
-        df = pd.read_csv(path)
-        df['Fecha'] = pd.to_datetime(df['Fecha'], dayfirst=True, format='%d/%m/%Y')
-        df['Mes_Num'] = df['Fecha'].dt.month
-        return df
-    except FileNotFoundError:
-        print(f"Error: No se encontró el archivo en {path}")
-        return pd.DataFrame()
-# Función para obtener una lista de ciudades
-def consultar_ciudades():
-    df = cargar_dataframe()
-    if df.empty:
-        return []
-    return sorted(df['Ciudad'].unique().tolist())
-# Función para obtener un DataFrame con los datos de un mes y ciudad
-def dataframe_mes_ciudad():
-    datos = cargar_dataframe()
-    if datos.empty:
-        return pd.DataFrame()
-
-    meses_es = {
-        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 
-        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto', 
-        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-    }
-    
-    df_resumen = datos[['Ciudad', 'Temperatura Maxima', 'Temperatura Minima', 'Mes_Num', 'Fecha']].copy()
-    df_resumen['Mes'] = df_resumen['Mes_Num'].map(meses_es)
-    
-    # Retornamos el DataFrame con los nombres de meses
-    return df_resumen[['Ciudad', 'Mes', 'Temperatura Maxima', 'Temperatura Minima', 'Fecha']]
-
-# Función para obtener la gráfica de un mes y ciudad
-def obtener_grafico_base64(ciudad, mes):
-    df_mes_ciudad = dataframe_mes_ciudad() 
-    df_filtrado = df_mes_ciudad[(df_mes_ciudad['Ciudad'] == ciudad) & 
-                                (df_mes_ciudad['Mes'] == mes)]
-
-    if not df_filtrado.empty:
-        plt.figure(figsize=(8, 5))
-        
-        # Preparamos los datos para Seaborn (necesita formato largo)
-        datos_plot = pd.DataFrame({
-            'Tipo': ['Máxima', 'Mínima'],
-            'Temperatura': [df_filtrado['Temperatura Maxima'].mean(), 
-                           df_filtrado['Temperatura Minima'].mean()]
-        })
-
-        # Creamos el gráfico con Seaborn
-        ax = sns.barplot(x='Tipo', y='Temperatura', data=datos_plot, hue='Tipo', palette=['#FF5733', '#33C1FF'], legend=False)
-
-        # Mejoras estéticas de Seaborn
-        plt.title(f'Temperaturas en {ciudad} ({mes})', fontsize=15, pad=20, fontweight='bold')
-        plt.ylabel('Grados Celsius (°C)', fontsize=12)
-        plt.xlabel('', fontsize=12)
-        sns.despine(left=True, bottom=True) # Quita los bordes innecesarios
-
-        # Etiquetas de valor sobre las barras
-        for p in ax.patches:
-            ax.annotate(f'{p.get_height():.1f}°', 
-                        (p.get_x() + p.get_width() / 2., p.get_height()), 
-                        ha='center', va='center', 
-                        xytext=(0, 9), 
-                        textcoords='offset points',
-                        fontsize=11, fontweight='bold')
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', dpi=100)
-        buf.seek(0)
-        uri = urllib.parse.quote(base64.b64encode(buf.read()))
-        plt.close()
-        return uri
-    return None
-
-
-# Función para obtener la gráfica de comparación de dos ciudades
-def obtener_grafico_comparativo_base64(ciudades_lista, mes):
-    df_mes_ciudad = dataframe_mes_ciudad()
-    df_filtrado = df_mes_ciudad[(df_mes_ciudad['Ciudad'].isin(ciudades_lista)) & 
-                                (df_mes_ciudad['Mes'] == mes)]
-    
-    if not df_filtrado.empty:
-        plt.figure(figsize=(10, 6))
-        
-        # Convertir a formato "tidy" para que Seaborn lo entienda mejor
-        df_tidy = df_filtrado.melt(id_vars=['Ciudad'], 
-                                   value_vars=['Temperatura Maxima', 'Temperatura Minima'],
-                                   var_name='Tipo', value_name='Temp')
-
-        # Gráfico comparativo elegante
-        ax = sns.barplot(x='Ciudad', y='Temp', hue='Tipo', data=df_tidy, palette=['#FF5733', '#33C1FF'])
-
-        plt.title(f'Comparativa de Temperaturas - {mes}', fontsize=16, fontweight='bold', pad=20)
-        plt.ylabel('Temperatura (°C)', fontsize=12)
-        plt.legend(title='Medición', frameon=True, shadow=True)
-        sns.despine()
-
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', dpi=100)
-        buf.seek(0)
-        uri = urllib.parse.quote(base64.b64encode(buf.read()))
-        plt.close()
-        return uri
-    return None
-
-
-
-def obtener_grafico_tendencia_base64(ciudad):
-    df_resumen = dataframe_mes_ciudad()
-    # Filtrar solo por ciudad para tener todo el año
-    df_ciudad = df_resumen[df_resumen['Ciudad'] == ciudad].copy()
-    
-    # Ordenar cronológicamente por la columna Fecha para que la línea no salte
-    df_ciudad = df_ciudad.sort_values('Fecha')
-
-    if not df_ciudad.empty:
-        plt.figure(figsize=(12, 6))
-        
-        # Graficamos la tendencia con Seaborn
-        # lineplot calcula automáticamente la media y la sombra de desviación (ci)
-        sns.lineplot(data=df_ciudad, x='Mes', y='Temperatura Maxima', 
-                     label='Tendencia Máxima', color='#FF5733', marker='o', errorbar='sd')
-        
-        sns.lineplot(data=df_ciudad, x='Mes', y='Temperatura Minima', 
-                     label='Tendencia Mínima', color='#33C1FF', marker='o', errorbar='sd')
-
-        # Estética profesional
-        plt.title(f'Tendencia Anual y Desviación - {ciudad} (2023)', fontsize=16, fontweight='bold', pad=20)
-        plt.ylabel('Temperatura (°C)', fontsize=12)
-        plt.xlabel('Meses del Año', fontsize=12)
-        plt.xticks(rotation=45) # Inclinar meses para mejor lectura
-        plt.legend(frameon=True, shadow=True)
-        
-        sns.despine()
-        plt.tight_layout()
-
-        # Conversión a Base64
-        buf = io.BytesIO()
-        plt.savefig(buf, format='png', bbox_inches='tight', dpi=120)
-        buf.seek(0)
-        uri = urllib.parse.quote(base64.b64encode(buf.read()))
-        plt.close()
-        return uri
-    return None
-
-
-def obtener_resumen_estadistico(ciudad_nombre, mes=None):
-    try:
-        df = cargar_dataframe()
-        df_filtrado = df[df['Ciudad'] == ciudad_nombre]
-        
-        # Si el usuario seleccionó un mes, filtramos el DataFrame
-        if mes and mes.strip():
-            df_filtrado = df_filtrado[df_filtrado['Mes'] == mes]
-            titulo = f"Métricas de {mes}"
-            mostrar_ds = False # En mes individual no mostramos desviación
-        else:
-            titulo = "Resumen Anual"
-            mostrar_ds = True
-
-        if df_filtrado.empty:
-            return None
-            
-        return {
-            'max_abs': df_filtrado['Temperatura Maxima'].max(),
-            'min_abs': df_filtrado['Temperatura Minima'].min(),
-            'promedio': round(df_filtrado['Temperatura Maxima'].mean(), 1),
-            'variabilidad': round(df_filtrado['Temperatura Maxima'].std(), 1) if mostrar_ds else None,
-            'titulo': titulo
-        }
+        url = f"https://geocoding-api.open-meteo.com/v1/search?name={ciudad}&count=1&language=es&format=json"
+        response = requests.get(url)
+        data = response.json()
+        if "results" in data:
+            res = data["results"][0]
+            return res["latitude"], res["longitude"]
     except Exception as e:
-        print(f"Error: {e}")
-        return None
+        print(f"Error en Geocoding: {e}")
+    return None, None
+
+def obtener_datos_meteorologicos(ciudad, pais, anio):
+    """Obtiene el historial de todo un año desde la nube."""
+    lat, lon = obtener_coordenadas(ciudad, pais)
+    if lat is None:
+        return pd.DataFrame()
+
+    try:
+        url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={anio}-01-01&end_date={anio}-12-31&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
+        response = requests.get(url)
+        data = response.json()
+        
+        df = pd.DataFrame({
+            'Fecha': pd.to_datetime(data['daily']['time']),
+            'Temperatura Maxima': data['daily']['temperature_2m_max'],
+            'Temperatura Minima': data['daily']['temperature_2m_min'],
+            'Ciudad': ciudad.capitalize()
+        })
+        
+        meses_es = {1:'Enero', 2:'Febrero', 3:'Marzo', 4:'Abril', 5:'Mayo', 6:'Junio', 
+                    7:'Julio', 8:'Agosto', 9:'Septiembre', 10:'Octubre', 11:'Noviembre', 12:'Diciembre'}
+        df['Mes'] = df['Fecha'].dt.month.map(meses_es)
+        df['Dia'] = df['Fecha'].dt.day
+        return df
+    except Exception as e:
+        print(f"Error al obtener clima: {e}")
+        return pd.DataFrame()
+
+# --- 2. FUNCIONES DE CÁLCULO ESTADÍSTICO ---
+
+def obtener_resumen_estadistico(df, mes=None):
+    """Calcula KPIs basados en el DataFrame obtenido de la API."""
+    if df.empty: return None
+    
+    df_filtrado = df.copy()
+    if mes and mes.strip():
+        df_filtrado = df_filtrado[df_filtrado['Mes'] == mes.capitalize()]
+    
+    if df_filtrado.empty: return None
+
+    return {
+        'max_abs': df_filtrado['Temperatura Maxima'].max(),
+        'min_abs': df_filtrado['Temperatura Minima'].min(),
+        'promedio': round(df_filtrado['Temperatura Maxima'].mean(), 1),
+        'variabilidad': round(df_filtrado['Temperatura Maxima'].std(), 1) if not mes else None
+    }
+
+# --- 3. FUNCIONES DE GENERACIÓN DE GRÁFICOS (MATPLOTLIB/SEABORN) ---
+
+def fig_to_base64(fig):
+    """Convierte un objeto Figure de Matplotlib a cadena Base64."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode('utf-8')
+
+def generar_grafico_individual(df, mes):
+    """Genera gráfico de barras para un mes específico."""
+    df_mes = df[df['Mes'] == mes.capitalize()]
+    if df_mes.empty: return None
+
+    fig = Figure(figsize=(10, 5))
+    ax = fig.subplots()
+    
+    sns.barplot(data=df_mes, x='Dia', y='Temperatura Maxima', ax=ax, palette='Oranges')
+    ax.set_title(f"Temperaturas Máximas en {mes} ({df_mes['Ciudad'].iloc[0]})", fontsize=14, fontweight='bold')
+    ax.set_xlabel("Día del Mes")
+    ax.set_ylabel("Temperatura (°C)")
+    
+    return fig_to_base64(fig)
+
+def generar_grafico_tendencia(df):
+    """Genera gráfico de líneas para la evolución anual."""
+    if df.empty: return None
+    
+    # Agrupamos por mes para suavizar la línea
+    orden_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    df_anual = df.groupby('Mes', sort=False)[['Temperatura Maxima', 'Temperatura Minima']].mean().reindex(orden_meses)
+
+    fig = Figure(figsize=(10, 5))
+    ax = fig.subplots()
+    
+    sns.lineplot(data=df_anual, markers=True, dashes=False, ax=ax)
+    ax.set_title(f"Tendencia Anual: {df['Ciudad'].iloc[0]}", fontsize=14, fontweight='bold')
+    ax.set_ylabel("Promedio Mensual (°C)")
+    ax.set_xlabel("Meses")
+    plt.setp(ax.get_xticklabels(), rotation=45)
+    
+    return fig_to_base64(fig)
+
+def generar_grafico_comparativo(df1, df2, mes):
+    """Compara dos ciudades en un mes específico."""
+    df1_mes = df1[df1['Mes'] == mes.capitalize()]
+    df2_mes = df2[df2['Mes'] == mes.capitalize()]
+    
+    df_comp = pd.concat([df1_mes, df2_mes])
+    if df_comp.empty: return None
+
+    fig = Figure(figsize=(10, 5))
+    ax = fig.subplots()
+    
+    sns.lineplot(data=df_comp, x='Dia', y='Temperatura Maxima', hue='Ciudad', ax=ax, style='Ciudad', markers=True)
+    ax.set_title(f"Comparativa de Temperaturas: {mes}", fontsize=14, fontweight='bold')
+    ax.set_ylabel("Temperatura Máxima (°C)")
+    
+    return fig_to_base64(fig)

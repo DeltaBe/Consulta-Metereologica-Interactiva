@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Clima Argentina | Análisis Profesional</title>
+    <title>Meteo-Analytics Global | Ingeniería de Datos</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -13,39 +13,37 @@
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; color: #333; }
         .navbar { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 1rem 0; }
-        .nav-pills .nav-link { color: #555; font-weight: 500; transition: all 0.3s ease; }
+        .nav-pills .nav-link { color: #555; font-weight: 500; transition: all 0.3s ease; border-radius: 50px; }
         .nav-pills .nav-link.active { background-color: #2a5298; box-shadow: 0 4px 10px rgba(42, 82, 152, 0.3); }
         .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .chart-container { background: white; padding: 2rem; }
-        .kpi-card { transition: transform 0.3s ease; }
-        .kpi-card:hover { transform: translateY(-5px); }
-        .btn-primary { background-color: #2a5298; border: none; }
-        .btn-success { background-color: #28a745; border: none; }
-        .btn-dark { background-color: #343a40; border: none; }
-        .footer { margin-top: 4rem; color: #888; font-size: 0.85rem; }
-        .no-print { margin-bottom: 1.5rem; }
-        .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); }
+        .form-control, .form-select { border: 2px solid #eee; border-radius: 10px; transition: all 0.3s; }
+        .form-control:focus { border-color: #2a5298; box-shadow: none; background-color: #fff; }
+        .kpi-card { transition: transform 0.3s ease; border-left: 5px solid; }
+        .chart-container { background: white; padding: 2rem; border-radius: 20px; }
+        .btn-primary { background-color: #1e3c72; border: none; border-radius: 10px; padding: 10px 20px; }
+        .btn-primary:hover { background-color: #2a5298; }
+        .badge-year { background-color: #e9ecef; color: #495057; font-weight: 600; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark shadow-sm mb-5">
+    <nav class="navbar navbar-dark shadow-sm mb-4">
         <div class="container text-center">
             <a class="navbar-brand mx-auto fw-bold" href="/">
-                <i class="bi bi-cloud-sun-fill me-2"></i> METEO-ANALYTICS ARGENTINA
+                <i class="bi bi-globe-americas me-2"></i> METEO-ANALYTICS GLOBAL
             </a>
         </div>
     </nav>
 
     <div class="container">
         <div class="row justify-content-center">
-            <div class="col-lg-10">
+            <div class="col-lg-11">
                 
-                <div class="bg-white p-2 rounded-pill shadow-sm mb-4 d-flex justify-content-center mx-auto" style="max-width: 700px;">
+                <div class="bg-white p-2 rounded-pill shadow-sm mb-4 d-flex justify-content-center mx-auto" style="max-width: 650px;">
                     <ul class="nav nav-pills nav-fill w-100">
                         <li class="nav-item">
                             <a class="nav-link {% if tab_activa == 'individual' %}active{% endif %}" href="?tab=individual">
-                                <i class="bi bi-geo-alt-fill"></i> Individual
+                                <i class="bi bi-geo-alt"></i> Individual
                             </a>
                         </li>
                         <li class="nav-item">
@@ -55,154 +53,131 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if tab_activa == 'tendencia' %}active{% endif %}" href="?tab=tendencia">
-                                <i class="bi bi-graph-up"></i> Tendencia Anual
+                                <i class="bi bi-graph-up"></i> Tendencia
                             </a>
                         </li>
                     </ul>
                 </div>
 
-                <div class="card p-4 mb-4 animate__animated animate__fadeInUp">
-                    {% if tab_activa == 'individual' %}
-                        <h6 class="text-muted mb-3"><i class="bi bi-search me-1"></i> Análisis por Ciudad</h6>
-                        <form method="GET" class="row g-3 align-items-end">
-                            <input type="hidden" name="tab" value="individual">
+                <div class="card p-4 mb-4 animate__animated animate__fadeIn">
+                    <form method="GET" class="row g-3 align-items-end">
+                        <input type="hidden" name="tab" value="{{ tab_activa }}">
+                        
+                        {% if tab_activa == 'individual' or tab_activa == 'tendencia' %}
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-uppercase text-muted">País</label>
+                                <input type="text" name="pais" class="form-control" placeholder="Ej: México" value="{{ params.pais }}" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-bold text-uppercase text-muted">Ciudad</label>
+                                <input type="text" name="ciudad" class="form-control" placeholder="Ej: Tapachula" value="{{ params.ciudad }}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold text-uppercase text-muted">Año</label>
+                                <input type="number" name="anio" class="form-control" value="{{ params.anio }}" min="1940" max="2026">
+                            </div>
+                            {% if tab_activa == 'individual' %}
+                            <div class="col-md-2">
+                                <label class="form-label small fw-bold text-uppercase text-muted">Mes</label>
+                                <input type="text" name="mes" class="form-control" placeholder="Ej: Abril" value="{{ params.mes }}">
+                            </div>
+                            {% endif %}
+
+                        {% elif tab_activa == 'comparativa' %}
                             <div class="col-md-5">
-                                <label class="form-label small fw-bold">Ciudad</label>
-                                <select name="ciudad" class="form-select border-0 bg-light shadow-sm">
-                                    {% for c in ciudades %}
-                                        <option value="{{ c }}" {% if request.GET.ciudad == c %}selected{% endif %}>{{ c }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="row g-2">
+                                    <div class="col-6"><input type="text" name="pais1" class="form-control" placeholder="País 1" value="{{ request.GET.pais1 }}"></div>
+                                    <div class="col-6"><input type="text" name="ciudad1" class="form-control" placeholder="Ciudad 1" value="{{ request.GET.ciudad1 }}"></div>
+                                </div>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold">Mes (Ej: Mayo)</label>
-                                <input type="text" name="mes" class="form-control border-0 bg-light shadow-sm" placeholder="Escriba el mes..." value="{{ request.GET.mes }}">
-                            </div>
-                            <div class="col-md-3">
-                                <button type="submit" class="btn btn-primary w-100 py-2 shadow-sm fw-bold">Ver Métricas</button>
-                            </div>
-                        </form>
-
-                    {% elif tab_activa == 'comparativa' %}
-                        <h6 class="text-muted mb-3"><i class="bi bi-intersect me-1"></i> Comparar dos Regiones</h6>
-                        <form method="GET" class="row g-3 align-items-end">
-                            <input type="hidden" name="tab" value="comparativa">
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold">Primera Ciudad</label>
-                                <select name="ciudad1" class="form-select border-0 bg-light shadow-sm">
-                                    {% for c in ciudades %}<option value="{{ c }}" {% if request.GET.ciudad1 == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small fw-bold">Segunda Ciudad</label>
-                                <select name="ciudad2" class="form-select border-0 bg-light shadow-sm">
-                                    {% for c in ciudades %}<option value="{{ c }}" {% if request.GET.ciudad2 == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
-                                </select>
+                            <div class="col-md-5">
+                                <div class="row g-2">
+                                    <div class="col-6"><input type="text" name="pais2" class="form-control" placeholder="País 2" value="{{ request.GET.pais2 }}"></div>
+                                    <div class="col-6"><input type="text" name="ciudad2" class="form-control" placeholder="Ciudad 2" value="{{ request.GET.ciudad2 }}"></div>
+                                </div>
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label small fw-bold">Mes</label>
-                                <input type="text" name="mes_comp" class="form-control border-0 bg-light shadow-sm" placeholder="Mes..." value="{{ request.GET.mes_comp }}">
+                                <input type="text" name="mes_comp" class="form-control" placeholder="Mes" value="{{ request.GET.mes_comp }}">
                             </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-success w-100 py-2 shadow-sm fw-bold">Comparar</button>
+                            <div class="col-md-10 mt-2">
+                                <label class="small text-muted">Año de comparación:</label>
+                                <input type="number" name="anio" class="form-control d-inline-block w-25 ms-2" value="{{ params.anio }}">
                             </div>
-                        </form>
+                        {% endif %}
 
-                    {% elif tab_activa == 'tendencia' %}
-                        <h6 class="text-muted mb-3"><i class="bi bi-graph-up me-1"></i> Evolución Anual</h6>
-                        <form method="GET" class="row g-3 align-items-end">
-                            <input type="hidden" name="tab" value="tendencia">
-                            <div class="col-md-9">
-                                <label class="form-label small fw-bold">Seleccionar Ciudad para Tendencia</label>
-                                <select name="ciudad_t" class="form-select border-0 bg-light shadow-sm">
-                                    {% for c in ciudades %}
-                                        <option value="{{ c }}" {% if request.GET.ciudad_t == c %}selected{% endif %}>{{ c }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="submit" class="btn btn-dark w-100 py-2 shadow-sm fw-bold">Generar Tendencia</button>
-                            </div>
-                        </form>
-                    {% endif %}
+                        <div class="col-md-2 ms-auto mt-3">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold">
+                                <i class="bi bi-search me-1"></i> Analizar
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
                 {% if grafico %}
                     {% if resumen %}
-                    <div class="row mb-4 animate__animated animate__fadeIn">
-                        <div class="col-12 mb-2">
-                            <small class="fw-bold text-muted text-uppercase">
-                                <i class="bi bi-info-circle-fill me-1"></i> 
-                                {% if tab_activa == 'individual' %} Métricas Mensuales {% else %} Resumen Anual {% endif %}
-                            </small>
-                        </div>
-
-                        <div class="{% if resumen.variabilidad %}col-md-3{% else %}col-md-4{% endif %} mb-3">
-                            <div class="card kpi-card text-center p-3 shadow-sm border-0 border-start border-danger border-5">
-                                <small class="text-muted fw-bold text-uppercase">Máxima</small>
-                                <h3 class="fw-bold text-danger mb-0">{{ resumen.max_abs }}°C</h3>
+                    <div class="row mb-4 animate__animated animate__fadeInUp">
+                        <div class="col-md-4">
+                            <div class="card kpi-card p-3 border-danger shadow-sm">
+                                <small class="text-muted fw-bold">T. MÁXIMA ABSOLUTA</small>
+                                <h2 class="fw-bold text-danger mb-0">{{ resumen.max_abs }}°C</h2>
                             </div>
                         </div>
-                        <div class="{% if resumen.variabilidad %}col-md-3{% else %}col-md-4{% endif %} mb-3">
-                            <div class="card kpi-card text-center p-3 shadow-sm border-0 border-start border-info border-5">
-                                <small class="text-muted fw-bold text-uppercase">Mínima</small>
-                                <h3 class="fw-bold text-info mb-0">{{ resumen.min_abs }}°C</h3>
+                        <div class="col-md-4">
+                            <div class="card kpi-card p-3 border-info shadow-sm">
+                                <small class="text-muted fw-bold">T. MÍNIMA ABSOLUTA</small>
+                                <h2 class="fw-bold text-info mb-0">{{ resumen.min_abs }}°C</h2>
                             </div>
                         </div>
-                        <div class="{% if resumen.variabilidad %}col-md-3{% else %}col-md-4{% endif %} mb-3">
-                            <div class="card kpi-card text-center p-3 shadow-sm border-0 border-start border-warning border-5">
-                                <small class="text-muted fw-bold text-uppercase">Promedio</small>
-                                <h3 class="fw-bold text-warning mb-0">{{ resumen.promedio }}°C</h3>
+                        <div class="col-md-4">
+                            <div class="card kpi-card p-3 border-warning shadow-sm">
+                                <small class="text-muted fw-bold">PROMEDIO MENSUAL</small>
+                                <h2 class="fw-bold text-warning mb-0">{{ resumen.promedio }}°C</h2>
                             </div>
                         </div>
-                        {% if resumen.variabilidad %}
-                        <div class="col-md-3 mb-3">
-                            <div class="card kpi-card text-center p-3 shadow-sm border-0 border-start border-secondary border-5">
-                                <small class="text-muted fw-bold text-uppercase">Variabilidad</small>
-                                <h3 class="fw-bold text-secondary mb-0">±{{ resumen.variabilidad }}°</h3>
-                            </div>
-                        </div>
-                        {% endif %}
                     </div>
                     {% endif %}
 
-                    <div class="text-end no-print animate__animated animate__fadeIn">
-                        <a href="/exportar-pdf/?{{ request.GET.urlencode }}" class="btn btn-outline-danger shadow-sm fw-bold mb-3">
-                            <i class="bi bi-file-earmark-pdf-fill"></i> Descargar Reporte PDF
+                    <div class="text-end mb-3">
+                        <a href="/exportar-pdf/?{{ request.GET.urlencode }}" class="btn btn-danger shadow-sm px-4">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Descargar Reporte PDF
                         </a>
                     </div>
 
-                    <div class="card chart-container text-center animate__animated animate__zoomIn">
-                        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-                            <h4 class="fw-bold text-secondary mb-0">Análisis Visual de Datos</h4>
-                            <span class="badge bg-light text-dark border p-2">Dataset 2023</span>
+                    <div class="card chart-container shadow-sm animate__animated animate__zoomIn">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="fw-bold text-dark mb-0">Visualización de Datos</h4>
+                            <span class="badge badge-year p-2">API Open-Meteo | {{ params.anio }}</span>
                         </div>
-                        <div class="bg-light p-3 rounded-4 shadow-inner">
-                            <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded" alt="Gráfico">
+                        <div class="bg-light p-3 rounded-4 border text-center">
+                            <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded" alt="Gráfico Meteorológico">
                         </div>
-                        <p class="text-muted mt-4 small">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Datos procesados dinámicamente mediante Pandas y visualizados con Seaborn.
-                        </p>
+                        <div class="mt-4 p-3 bg-light rounded-3">
+                            <p class="small text-muted mb-0">
+                                <i class="bi bi-info-circle-fill me-2"></i>
+                                Los datos presentados son extraídos en tiempo real. La precisión depende de la estación meteorológica más cercana a la ubicación buscada.
+                            </p>
+                        </div>
                     </div>
 
                 {% elif error %}
-                    <div class="alert alert-warning border-0 shadow-sm animate__animated animate__headShake text-center py-3">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error }}
+                    <div class="alert alert-warning border-0 shadow-sm animate__animated animate__shakeX text-center py-4">
+                        <i class="bi bi-exclamation-octagon fs-2 mb-2 d-block"></i>
+                        <span class="fw-bold">{{ error }}</span>
                     </div>
                 {% else %}
-                    <div class="text-center py-5 text-muted animate__animated animate__fadeIn">
-                        <i class="bi bi-bar-chart-steps" style="font-size: 4rem; opacity: 0.3;"></i>
-                        <h5 class="mt-3 fw-bold">Plataforma de Análisis Meteorológico</h5>
-                        <p>Selecciona una ciudad y un parámetro para comenzar el análisis estadístico.</p>
+                    <div class="text-center py-5 text-muted opacity-50">
+                        <i class="bi bi-cloud-arrow-down" style="font-size: 5rem;"></i>
+                        <h4 class="mt-3">Listo para procesar datos globales</h4>
+                        <p>Ingresa una ciudad y país para comenzar el análisis.</p>
                     </div>
                 {% endif %}
 
             </div>
         </div>
 
-        <footer class="footer text-center">
-            <p>© 2026 ClimaInteractiva | Proyecto Final Ingeniería de Datos</p>
+        <footer class="footer text-center mt-5 mb-4 text-muted">
+            <hr class="w-25 mx-auto mb-4">
+            <p class="small">© 2026 Sistema de Análisis Meteorológico | Estudiante de Ingeniería</p>
         </footer>
     </div>
 
