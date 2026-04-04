@@ -14,16 +14,16 @@ sns.set_theme(style="whitegrid")
 
 def obtener_coordenadas(estado, pais):
     """
-    Busca coordenadas basadas en el Estado y País.
+    Busca coordenadas basadas en el Estado y País con Headers para evitar bloqueos en Render.
     """
-    # Limpiamos el texto para la URL
     busqueda = f"{estado.strip()}, {pais.strip()}".replace(" ", "+")
-    
-    # Agregamos feature_code=ADM1 para que priorice estados/provincias
     url = f"https://geocoding-api.open-meteo.com/v1/search?name={busqueda}&count=1&language=es&format=json"
     
+    # User-Agent necesario para que la API no bloquee la IP del servidor de Render
+    headers = {'User-Agent': 'MeteoAnalytics/1.0 (contact@example.com)'}
+    
     try:
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, headers=headers, timeout=10)
         data = response.json()
         
         if "results" in data:
@@ -37,21 +37,22 @@ def obtener_coordenadas(estado, pais):
 
 def obtener_datos_meteorologicos(estado, pais, anio):
     """
-    Obtiene los datos climáticos históricos usando coordenadas.
+    Obtiene los datos climáticos históricos.
     """
     lat, lon, nombre_oficial = obtener_coordenadas(estado, pais)
     
     if lat is None:
         return pd.DataFrame()
 
+    headers = {'User-Agent': 'MeteoAnalytics/1.0 (contact@example.com)'}
+    url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={anio}-01-01&end_date={anio}-12-31&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
+    
     try:
-        # Construcción de la URL para el año completo
-        url = f"https://archive-api.open-meteo.com/v1/archive?latitude={lat}&longitude={lon}&start_date={anio}-01-01&end_date={anio}-12-31&daily=temperature_2m_max,temperature_2m_min&timezone=auto"
-        
-        response = requests.get(url, timeout=15)
+        response = requests.get(url, headers=headers, timeout=15)
         data = response.json()
         
         if 'daily' not in data:
+            print(f"API Error en {nombre_oficial}: {data}")
             return pd.DataFrame()
 
         df = pd.DataFrame({
@@ -120,7 +121,6 @@ def generar_grafico_tendencia(df):
     orden_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
     
-    # Agrupamos por mes y reordenamos
     df_anual = df.groupby('Mes', sort=False)[['Temperatura Maxima', 'Temperatura Minima']].mean().reindex(orden_meses)
 
     fig = Figure(figsize=(10, 5))
@@ -130,6 +130,8 @@ def generar_grafico_tendencia(df):
     ax.set_title(f"Tendencia Anual: {df['Ubicacion'].iloc[0]}", fontsize=14, fontweight='bold')
     ax.set_ylabel("Promedio Mensual (°C)")
     ax.set_xlabel("Meses")
+    
+    # Rotación de etiquetas compatible con Figure
     for tick in ax.get_xticklabels():
         tick.set_rotation(45)
     
