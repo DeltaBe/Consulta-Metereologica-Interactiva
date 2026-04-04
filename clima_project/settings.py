@@ -25,8 +25,11 @@ SECRET_KEY = 'django-insecure-y6opbyn0d9%*9jh7$k7mwq)r2)n()h0-d&p!(4zr@o4sd)2u^#
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = [
+    'consulta-metereologica-interactiva.onrender.com', 
+    'localhost', 
+    '127.0.0.1'
+]
 
 # Application definition
 
