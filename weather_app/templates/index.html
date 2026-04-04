@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meteo-Analytics Global | Ingeniería de Datos</title>
+    <title>Meteo-Analytics Global | Análisis por Estado</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
@@ -16,7 +16,7 @@
         .nav-pills .nav-link { color: #555; font-weight: 500; transition: all 0.3s ease; border-radius: 50px; }
         .nav-pills .nav-link.active { background-color: #2a5298; box-shadow: 0 4px 10px rgba(42, 82, 152, 0.3); }
         .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .form-control, .form-select { border: 2px solid #eee; border-radius: 10px; transition: all 0.3s; }
+        .form-control { border: 2px solid #eee; border-radius: 10px; transition: all 0.3s; }
         .form-control:focus { border-color: #2a5298; box-shadow: none; background-color: #fff; }
         .kpi-card { transition: transform 0.3s ease; border-left: 5px solid; }
         .chart-container { background: white; padding: 2rem; border-radius: 20px; }
@@ -30,7 +30,7 @@
     <nav class="navbar navbar-dark shadow-sm mb-4">
         <div class="container text-center">
             <a class="navbar-brand mx-auto fw-bold" href="/">
-                <i class="bi bi-globe-americas me-2"></i> METEO-ANALYTICS GLOBAL
+                <i class="bi bi-map me-2"></i> METEO-ANALYTICS: ANÁLISIS ESTATAL
             </a>
         </div>
     </nav>
@@ -69,8 +69,8 @@
                                 <input type="text" name="pais" class="form-control" placeholder="Ej: México" value="{{ params.pais }}" required>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label small fw-bold text-uppercase text-muted">Ciudad</label>
-                                <input type="text" name="ciudad" class="form-control" placeholder="Ej: Tapachula" value="{{ params.ciudad }}" required>
+                                <label class="form-label small fw-bold text-uppercase text-muted">Estado / Provincia</label>
+                                <input type="text" name="estado" class="form-control" placeholder="Ej: Chiapas" value="{{ params.estado }}" required>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label small fw-bold text-uppercase text-muted">Año</label>
@@ -85,22 +85,25 @@
 
                         {% elif tab_activa == 'comparativa' %}
                             <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">ESTADO Y PAÍS 1</label>
                                 <div class="row g-2">
+                                    <div class="col-6"><input type="text" name="estado1" class="form-control" placeholder="Estado 1" value="{{ request.GET.estado1 }}"></div>
                                     <div class="col-6"><input type="text" name="pais1" class="form-control" placeholder="País 1" value="{{ request.GET.pais1 }}"></div>
-                                    <div class="col-6"><input type="text" name="ciudad1" class="form-control" placeholder="Ciudad 1" value="{{ request.GET.ciudad1 }}"></div>
                                 </div>
                             </div>
                             <div class="col-md-5">
+                                <label class="form-label small fw-bold text-muted">ESTADO Y PAÍS 2</label>
                                 <div class="row g-2">
+                                    <div class="col-6"><input type="text" name="estado2" class="form-control" placeholder="Estado 2" value="{{ request.GET.estado2 }}"></div>
                                     <div class="col-6"><input type="text" name="pais2" class="form-control" placeholder="País 2" value="{{ request.GET.pais2 }}"></div>
-                                    <div class="col-6"><input type="text" name="ciudad2" class="form-control" placeholder="Ciudad 2" value="{{ request.GET.ciudad2 }}"></div>
                                 </div>
                             </div>
                             <div class="col-md-2">
+                                <label class="form-label small fw-bold text-muted">MES</label>
                                 <input type="text" name="mes_comp" class="form-control" placeholder="Mes" value="{{ request.GET.mes_comp }}">
                             </div>
-                            <div class="col-md-10 mt-2">
-                                <label class="small text-muted">Año de comparación:</label>
+                            <div class="col-md-12 mt-2">
+                                <label class="small text-muted fw-bold">Año de análisis:</label>
                                 <input type="number" name="anio" class="form-control d-inline-block w-25 ms-2" value="{{ params.anio }}">
                             </div>
                         {% endif %}
@@ -118,19 +121,19 @@
                     <div class="row mb-4 animate__animated animate__fadeInUp">
                         <div class="col-md-4">
                             <div class="card kpi-card p-3 border-danger shadow-sm">
-                                <small class="text-muted fw-bold">T. MÁXIMA ABSOLUTA</small>
+                                <small class="text-muted fw-bold">T. MÁXIMA ESTATAL</small>
                                 <h2 class="fw-bold text-danger mb-0">{{ resumen.max_abs }}°C</h2>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="card kpi-card p-3 border-info shadow-sm">
-                                <small class="text-muted fw-bold">T. MÍNIMA ABSOLUTA</small>
+                                <small class="text-muted fw-bold">T. MÍNIMA ESTATAL</small>
                                 <h2 class="fw-bold text-info mb-0">{{ resumen.min_abs }}°C</h2>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="card kpi-card p-3 border-warning shadow-sm">
-                                <small class="text-muted fw-bold">PROMEDIO MENSUAL</small>
+                                <small class="text-muted fw-bold">PROMEDIO REGIONAL</small>
                                 <h2 class="fw-bold text-warning mb-0">{{ resumen.promedio }}°C</h2>
                             </div>
                         </div>
@@ -146,16 +149,10 @@
                     <div class="card chart-container shadow-sm animate__animated animate__zoomIn">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h4 class="fw-bold text-dark mb-0">Visualización de Datos</h4>
-                            <span class="badge badge-year p-2">API Open-Meteo | {{ params.anio }}</span>
+                            <span class="badge badge-year p-2">Análisis Regional | {{ params.anio }}</span>
                         </div>
                         <div class="bg-light p-3 rounded-4 border text-center">
                             <img src="data:image/png;base64,{{ grafico }}" class="img-fluid rounded" alt="Gráfico Meteorológico">
-                        </div>
-                        <div class="mt-4 p-3 bg-light rounded-3">
-                            <p class="small text-muted mb-0">
-                                <i class="bi bi-info-circle-fill me-2"></i>
-                                Los datos presentados son extraídos en tiempo real. La precisión depende de la estación meteorológica más cercana a la ubicación buscada.
-                            </p>
                         </div>
                     </div>
 
@@ -166,9 +163,9 @@
                     </div>
                 {% else %}
                     <div class="text-center py-5 text-muted opacity-50">
-                        <i class="bi bi-cloud-arrow-down" style="font-size: 5rem;"></i>
-                        <h4 class="mt-3">Listo para procesar datos globales</h4>
-                        <p>Ingresa una ciudad y país para comenzar el análisis.</p>
+                        <i class="bi bi-map-fill" style="font-size: 5rem;"></i>
+                        <h4 class="mt-3">Listo para procesar datos estatales</h4>
+                        <p>Selecciona un estado y país para obtener los registros históricos.</p>
                     </div>
                 {% endif %}
 
@@ -177,7 +174,7 @@
 
         <footer class="footer text-center mt-5 mb-4 text-muted">
             <hr class="w-25 mx-auto mb-4">
-            <p class="small">© 2026 Sistema de Análisis Meteorológico Hecho por Maximiliano Hernandez Zelaya</p> 
+            <p class="small">© 2026 Meteo-Analytics Global | Ingeniería de Datos</p>
         </footer>
     </div>
 

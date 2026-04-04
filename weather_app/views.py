@@ -1,162 +1,140 @@
-from django.shortcuts import render , redirect
+from django.shortcuts import render
 from django.http import HttpResponse
 from django.template.loader import get_template
 from xhtml2pdf import pisa
-# Create your views here.
-
+from .utils import (
+    obtener_datos_meteorologicos, 
+    obtener_resumen_estadistico,
+    generar_grafico_individual, 
+    generar_grafico_tendencia, 
+    generar_grafico_comparativo
+)
 from datetime import datetime
 
-from .utils import (
-    obtener_datos_meteorologicos,
-    generar_grafico_individual,
-    generar_grafico_tendencia,
-    generar_grafico_comparativo,
-    obtener_resumen_estadistico
-)
-
 def index(request):
-    # 1. Parámetros base desde el navegador
+    # 1. Captura de parámetros básicos
     tab = request.GET.get('tab', 'individual')
+    anio = request.GET.get('anio', '2024')
     pais = request.GET.get('pais', '').strip()
-    ciudad = request.GET.get('ciudad', '').strip()
-    anio = request.GET.get('anio', '2023') # Año por defecto
-    mes_input = request.GET.get('mes', '').strip()
-    mes = mes_input.capitalize() if mes_input else ""
+    estado = request.GET.get('estado', '').strip()
+    mes = request.GET.get('mes', '').capitalize()
 
-    # Variables de respuesta
+    # Variables de salida
     grafico = None
-    error = None
     resumen = None
+    error = None
 
-    # --- LÓGICA POR PESTAÑA ---
-
-    # PESTAÑA INDIVIDUAL
-    if tab == 'individual' and ciudad and pais:
-        df = obtener_datos_meteorologicos(ciudad, pais, anio)
-        if not df.empty:
-            if mes:
+    # 2. Lógica por Pestaña
+    try:
+        if tab == 'individual' and estado and pais:
+            df = obtener_datos_meteorologicos(estado, pais, anio)
+            if not df.empty:
+                if not mes: mes = "Enero" # Mes por defecto si no se ingresa
                 grafico = generar_grafico_individual(df, mes)
                 resumen = obtener_resumen_estadistico(df, mes)
+                if not grafico: error = f"No hay datos para el mes de {mes}."
             else:
-                error = "Por favor, escribe un mes (ej: Mayo) para el análisis individual."
-        else:
-            error = f"No se encontraron datos para {ciudad}, {pais} en el año {anio}."
+                error = f"No se encontraron datos para {estado}, {pais} en {anio}."
 
-    # PESTAÑA COMPARATIVA
-    elif tab == 'comparativa':
-        c1 = request.GET.get('ciudad1', '').strip()
-        p1 = request.GET.get('pais1', '').strip()
-        c2 = request.GET.get('ciudad2', '').strip()
-        p2 = request.GET.get('pais2', '').strip()
-        mes_comp = request.GET.get('mes_comp', '').capitalize()
-
-        if all([c1, p1, c2, p2, mes_comp]):
-            df1 = obtener_datos_meteorologicos(c1, p1, anio)
-            df2 = obtener_datos_meteorologicos(c2, p2, anio)
-            
-            if not df1.empty and not df2.empty:
-                grafico = generar_grafico_comparativo(df1, df2, mes_comp)
-                # Omitimos resumen en comparativa por diseño
+        elif tab == 'tendencia' and estado and pais:
+            df = obtener_datos_meteorologicos(estado, pais, anio)
+            if not df.empty:
+                grafico = generar_grafico_tendencia(df)
+                resumen = obtener_resumen_estadistico(df) # Resumen anual
             else:
-                error = "Error al obtener datos de una o ambas ciudades."
-        elif any([c1, p1, c2, p2]):
-            error = "Completa todos los campos de ambas ciudades y el mes."
+                error = f"No se pudieron generar tendencias para {estado}."
 
-    # PESTAÑA TENDENCIA
-    elif tab == 'tendencia' and ciudad and pais:
-        df = obtener_datos_meteorologicos(ciudad, pais, anio)
-        if not df.empty:
-            grafico = generar_grafico_tendencia(df)
-            resumen = obtener_resumen_estadistico(df) # Anual (sin mes)
-        else:
-            error = f"No se pudo generar la tendencia para {ciudad}."
+        elif tab == 'comparativa':
+            e1 = request.GET.get('estado1', '').strip()
+            p1 = request.GET.get('pais1', '').strip()
+            e2 = request.GET.get('estado2', '').strip()
+            p2 = request.GET.get('pais2', '').strip()
+            mes_comp = request.GET.get('mes_comp', 'Enero').capitalize()
 
-    # --- CONTEXTO PARA EL TEMPLATE ---
+            if e1 and e2:
+                df1 = obtener_datos_meteorologicos(e1, p1, anio)
+                df2 = obtener_datos_meteorologicos(e2, p2, anio)
+                if not df1.empty and not df2.empty:
+                    grafico = generar_grafico_comparativo(df1, df2, mes_comp)
+                else:
+                    error = "Uno o ambos estados no devolvieron datos."
+
+    except Exception as e:
+        error = f"Ocurrió un error inesperado: {str(e)}"
+
     context = {
         'tab_activa': tab,
         'grafico': grafico,
-        'error': error,
         'resumen': resumen,
-        # Devolvemos los datos para mantener los inputs llenos
+        'error': error,
         'params': {
             'pais': pais,
-            'ciudad': ciudad,
+            'estado': estado,
             'anio': anio,
             'mes': mes
         }
     }
-    
     return render(request, 'index.html', context)
 
 def exportar_pdf(request):
-    # 1. Parámetros desde la URL
     tab = request.GET.get('tab', 'individual')
-    anio = request.GET.get('anio', '2023')
+    anio = request.GET.get('anio', '2024')
     
     grafico = None
-    titulo = ""
-    mes = ""
+    titulo = "Reporte Meteorológico"
+    mes_reporte = ""
 
-    # 2. Lógica según la pestaña para obtener datos de la API y generar gráfico
+    # Replicamos la lógica para obtener el gráfico que se ve en pantalla
     if tab == 'individual':
-        ciudad = request.GET.get('ciudad', '').strip()
+        estado = request.GET.get('estado', '').strip()
         pais = request.GET.get('pais', '').strip()
-        mes = request.GET.get('mes', '').capitalize()
-        
-        # Llamamos a la API para tener el DataFrame
-        df = obtener_datos_meteorologicos(ciudad, pais, anio)
+        mes_reporte = request.GET.get('mes', 'Enero').capitalize()
+        df = obtener_datos_meteorologicos(estado, pais, anio)
         if not df.empty:
-            grafico = generar_grafico_individual(df, mes)
-            titulo = f"Reporte Meteorológico: {ciudad.capitalize()} ({pais.capitalize()})"
-        else:
-            titulo = "Error: No se encontraron datos para el reporte."
+            grafico = generar_grafico_individual(df, mes_reporte)
+            titulo = f"Análisis de Temperatura: {estado}, {pais}"
+
+    elif tab == 'tendencia':
+        estado = request.GET.get('estado', '').strip()
+        pais = request.GET.get('pais', '').strip()
+        df = obtener_datos_meteorologicos(estado, pais, anio)
+        if not df.empty:
+            grafico = generar_grafico_tendencia(df)
+            titulo = f"Tendencia Anual: {estado}"
 
     elif tab == 'comparativa':
-        c1 = request.GET.get('ciudad1', '').strip()
+        e1 = request.GET.get('estado1', '').strip()
         p1 = request.GET.get('pais1', '').strip()
-        c2 = request.GET.get('ciudad2', '').strip()
+        e2 = request.GET.get('estado2', '').strip()
         p2 = request.GET.get('pais2', '').strip()
-        mes = request.GET.get('mes_comp', '').capitalize()
-        
-        # Obtenemos ambos DataFrames de la API
-        df1 = obtener_datos_meteorologicos(c1, p1, anio)
-        df2 = obtener_datos_meteorologicos(c2, p2, anio)
-        
+        mes_reporte = request.GET.get('mes_comp', 'Enero').capitalize()
+        df1 = obtener_datos_meteorologicos(e1, p1, anio)
+        df2 = obtener_datos_meteorologicos(e2, p2, anio)
         if not df1.empty and not df2.empty:
-            grafico = generar_grafico_comparativo(df1, df2, mes)
-            titulo = f"Comparativa: {c1.capitalize()} vs {c2.capitalize()}"
-        else:
-            titulo = "Error: Datos insuficientes para la comparativa."
+            grafico = generar_grafico_comparativo(df1, df2, mes_reporte)
+            titulo = f"Comparativa: {e1} vs {e2}"
 
-    # 3. Fecha del reporte en español
+    # Fecha del reporte
     ahora = datetime.now()
-    meses_esp = [
-        "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
-        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-    ]
+    meses_esp = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                 "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
     fecha_hoy = f"{ahora.day} de {meses_esp[ahora.month - 1]} de {ahora.year}"
 
-    # 4. Contexto para el template HTML
     context = {
         'grafico': grafico,
         'titulo': titulo,
-        'mes': mes,
+        'mes': mes_reporte,
         'fecha_reporte': fecha_hoy,
         'anio': anio
     }
 
-    # 5. Generar el PDF usando xhtml2pdf
     response = HttpResponse(content_type='application/pdf')
-    # Nombre de archivo dinámico
-    filename = f"reporte_{ciudad if tab=='individual' else 'comparativa'}_{mes}.pdf"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response['Content-Disposition'] = f'attachment; filename="reporte_{tab}_{anio}.pdf"'
     
     template = get_template('pdf_template.html')
     html = template.render(context)
     
     pisa_status = pisa.CreatePDF(html, dest=response)
-    
     if pisa_status.err:
         return HttpResponse('Error al generar el PDF', status=500)
-    
     return response
